@@ -1,0 +1,48 @@
+[project]
+name = "ai_agent_orchestration_hub"
+version = "0.1.0"
+description = "Enterprise-grade AI Agent Orchestration Hub using CrewAI"
+authors = [{ name = "AI Agent Orchestration Hub", email = "contact@example.com" }]
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "crewai[litellm,tools]==1.7.2",
+    "pydantic>=2.0.0,<3.0.0",
+    "fastapi>=0.104.0,<1.0.0",
+    "uvicorn[standard]>=0.24.0,<1.0.0",
+    "websockets>=12.0,<13.0",
+    "pyyaml>=6.0,<7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+]
+
+[project.scripts]
+ai_agent_orchestration_hub = "ai_agent_orchestration_hub.main:run"
+run_crew = "ai_agent_orchestration_hub.main:run"
+train = "ai_agent_orchestration_hub.main:train"
+replay = "ai_agent_orchestration_hub.main:replay"
+test = "ai_agent_orchestration_hub.main:test"
+run_with_trigger = "ai_agent_orchestration_hub.main:run_with_trigger"
+api_server = "ai_agent_orchestration_hub.api:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.crewai]
+type = "crew"
+crew_class = "AiAgentOrchestrationHubCrew"
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+
+[tool.isort]
+profile = "black"
+line_length = 88
