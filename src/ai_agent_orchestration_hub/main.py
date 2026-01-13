@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys
-from ai_agent_orchestration_hub.crew import AiAgentOrchestrationHubCrew
+from .crew import AiAgentOrchestrationHubCrew
 
 # This main file is intended to be a way for your to run your
 # crew locally, so refrain from adding unnecessary logic into this file.

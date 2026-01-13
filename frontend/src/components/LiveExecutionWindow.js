@@ -31,17 +31,7 @@ const LiveExecutionWindow = ({ executionData, onExecutionUpdate }) => {
     }
   }, [executionData]);
 
-  // Function to add messages programmatically (for future use)
-  // eslint-disable-next-line no-unused-vars
-  const addMessage = (type, message, agent = 'System') => {
-    setConversations(prev => [...prev, {
-      id: Date.now(),
-      type,
-      message,
-      timestamp: new Date(),
-      agent
-    }]);
-  };
+
 
   const formatTimestamp = (timestamp) => {
     return new Date(timestamp).toLocaleTimeString();

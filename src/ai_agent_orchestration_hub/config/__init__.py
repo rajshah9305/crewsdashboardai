@@ -1,1 +1,1 @@
-# Configuration module for AI Agent Orchestration Hub
+"""Configuration module for AI Agent Orchestration Hub."""

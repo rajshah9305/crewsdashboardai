@@ -2,17 +2,21 @@
 """
 Test script to verify the frontend and backend integration
 """
-import asyncio
 import sys
+import os
 import subprocess
-import time
 from pathlib import Path
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def test_frontend_build():
     """Test if the frontend can build successfully"""
     print("🧪 Testing frontend build...")
     
-    frontend_dir = Path("frontend")
+    # Get the project root directory
+    project_root = Path(__file__).parent.parent
+    frontend_dir = project_root / "frontend"
     if not frontend_dir.exists():
         print("❌ Frontend directory not found")
         return False

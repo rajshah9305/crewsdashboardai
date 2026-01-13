@@ -4,6 +4,11 @@ Test script to verify the API functionality
 """
 import asyncio
 import sys
+import os
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from src.ai_agent_orchestration_hub.api import app
 from src.ai_agent_orchestration_hub.crew import AiAgentOrchestrationHubCrew
 
