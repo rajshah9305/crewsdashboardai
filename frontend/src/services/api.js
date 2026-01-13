@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+// For Vercel deployment, use relative URLs which will be handled by the API routes
+// For local development, use the full URL
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -16,6 +18,7 @@ export const apiService = {
   // Agents
   getAgents: () => api.get('/agents'),
   getAgent: (agentName) => api.get(`/agents/${agentName}`),
+  createAgent: (description) => api.post('/agents/create', { description }),
 
   // Tasks
   createTask: (taskDescription, userId = null) => 
@@ -26,20 +29,137 @@ export const apiService = {
   getTaskLogs: (taskId) => api.get(`/tasks/${taskId}/logs`),
   
   getAllTasks: () => api.get('/tasks'),
+  
+  createTaskFromNLP: (description, availableAgents = null) =>
+    api.post('/tasks/create', { description, available_agents: availableAgents }),
+  
+  executeTask: (taskId) => api.post(`/tasks/execute/${taskId}`),
 };
 
+// Polling-based updates for serverless (replaces WebSocket)
+export class PollingService {
+  constructor() {
+    this.listeners = new Map();
+    this.pollingInterval = null;
+    this.isPolling = false;
+    this.pollRate = 5000; // Poll every 5 seconds
+  }
+
+  start() {
+    if (this.isPolling) {
+      console.log('Polling already active');
+      return;
+    }
+
+    this.isPolling = true;
+    this.emit('connected');
+    console.log('Polling service started');
+
+    // Initial fetch
+    this.poll();
+
+    // Set up polling interval
+    this.pollingInterval = setInterval(() => this.poll(), this.pollRate);
+  }
+
+  stop() {
+    if (this.pollingInterval) {
+      clearInterval(this.pollingInterval);
+      this.pollingInterval = null;
+    }
+    this.isPolling = false;
+    this.emit('disconnected');
+    console.log('Polling service stopped');
+  }
+
+  async poll() {
+    try {
+      // Fetch agents
+      const agentsResponse = await apiService.getAgents();
+      if (agentsResponse.data) {
+        this.emit('agent_update', {
+          type: 'agent_statuses',
+          agents: agentsResponse.data.agents
+        });
+      }
+
+      // Fetch tasks
+      const tasksResponse = await apiService.getAllTasks();
+      if (tasksResponse.data) {
+        this.emit('task_update', {
+          type: 'tasks_updated',
+          tasks: tasksResponse.data.tasks
+        });
+      }
+    } catch (error) {
+      console.error('Polling error:', error);
+      this.emit('error', error);
+    }
+  }
+
+  // Alias for compatibility
+  connect() {
+    this.start();
+  }
+
+  disconnect() {
+    this.stop();
+  }
+
+  on(event, callback) {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, []);
+    }
+    this.listeners.get(event).push(callback);
+  }
+
+  off(event, callback) {
+    if (this.listeners.has(event)) {
+      const callbacks = this.listeners.get(event);
+      const index = callbacks.indexOf(callback);
+      if (index > -1) {
+        callbacks.splice(index, 1);
+      }
+    }
+  }
+
+  emit(event, data) {
+    if (this.listeners.has(event)) {
+      this.listeners.get(event).forEach(callback => {
+        try {
+          callback(data);
+        } catch (error) {
+          console.error(`Error in polling event handler for ${event}:`, error);
+        }
+      });
+    }
+  }
+
+  getConnectionState() {
+    return this.isPolling ? 'CONNECTED' : 'DISCONNECTED';
+  }
+}
+
+// WebSocket service for local development (when backend supports it)
 export class WebSocketService {
   constructor() {
     this.ws = null;
     this.listeners = new Map();
     this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5;
+    this.maxReconnectAttempts = 3;
     this.reconnectDelay = 3000;
     this.isConnecting = false;
     this.heartbeatInterval = null;
   }
 
   connect() {
+    // Skip WebSocket in production (Vercel serverless doesn't support persistent connections)
+    if (API_BASE_URL === '/api' || API_BASE_URL.includes('vercel')) {
+      console.log('WebSocket not available in serverless mode, using polling');
+      this.emit('disconnected');
+      return;
+    }
+
     if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.OPEN)) {
       console.log('WebSocket already connecting or connected');
       return;
@@ -57,19 +177,15 @@ export class WebSocketService {
         this.isConnecting = false;
         this.reconnectAttempts = 0;
         this.emit('connected');
-        
-        // Send heartbeat to maintain connection
         this.startHeartbeat();
       };
 
       this.ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log('WebSocket message received:', data.type);
           this.emit('message', data);
           this.emit(data.type, data);
           
-          // Handle specific message types
           switch (data.type) {
             case 'execution_log':
               this.emit('execution_log', data);
@@ -83,9 +199,6 @@ export class WebSocketService {
             case 'task_completed':
             case 'task_failed':
               this.emit('task_update', data);
-              break;
-            case 'heartbeat':
-              // Handle heartbeat response
               break;
             default:
               break;
@@ -101,10 +214,8 @@ export class WebSocketService {
         this.emit('disconnected');
         this.stopHeartbeat();
         
-        // Attempt to reconnect if not a normal closure
         if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
           this.reconnectAttempts++;
-          console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${this.reconnectDelay}ms...`);
           setTimeout(() => this.connect(), this.reconnectDelay);
         }
       };
@@ -118,13 +229,6 @@ export class WebSocketService {
       console.error('Failed to create WebSocket connection:', error);
       this.isConnecting = false;
       this.emit('error', error);
-      
-      // Retry connection after delay
-      if (this.reconnectAttempts < this.maxReconnectAttempts) {
-        this.reconnectAttempts++;
-        console.log(`Retrying connection in ${this.reconnectDelay}ms...`);
-        setTimeout(() => this.connect(), this.reconnectDelay);
-      }
     }
   }
 
@@ -138,12 +242,12 @@ export class WebSocketService {
   }
 
   startHeartbeat() {
-    this.stopHeartbeat(); // Clear any existing interval
+    this.stopHeartbeat();
     this.heartbeatInterval = setInterval(() => {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         this.send({ type: 'heartbeat', timestamp: new Date().toISOString() });
       }
-    }, 30000); // Send heartbeat every 30 seconds
+    }, 30000);
   }
 
   stopHeartbeat() {
@@ -185,8 +289,6 @@ export class WebSocketService {
   send(data) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data));
-    } else {
-      console.warn('WebSocket is not connected. Cannot send message:', data);
     }
   }
 
@@ -208,4 +310,8 @@ export class WebSocketService {
   }
 }
 
-export const wsService = new WebSocketService();
+// Export the appropriate service based on environment
+// Use polling for serverless, WebSocket for local development
+export const wsService = API_BASE_URL === '/api' || API_BASE_URL.includes('vercel')
+  ? new PollingService()
+  : new WebSocketService();
