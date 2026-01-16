@@ -1,0 +1,6 @@
+api/
+src/
+*.py
+requirements.txt
+pyproject.toml
+uv.lock
