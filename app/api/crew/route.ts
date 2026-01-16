@@ -3,6 +3,9 @@ import { NextRequest } from 'next/server'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+// Backend API URL - set via environment variable
+const BACKEND_URL = process.env.BACKEND_API_URL || 'http://localhost:8000'
+
 export async function POST(request: NextRequest) {
   try {
     const { mission } = await request.json()
@@ -18,9 +21,22 @@ export async function POST(request: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          // Demo mode - simulate agent execution
-          const agents = ['Research Agent', 'Analysis Agent', 'Writer Agent']
-          
+          // Call the FastAPI backend
+          const response = await fetch(`${BACKEND_URL}/tasks`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ task_description: mission }),
+          })
+
+          if (!response.ok) {
+            throw new Error(`Backend API error: ${response.statusText}`)
+          }
+
+          const data = await response.json()
+          const taskId = data.task_id
+
           // Send initial log
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ 
@@ -30,43 +46,66 @@ export async function POST(request: NextRequest) {
             })}\n\n`)
           )
 
-          await sleep(1000)
+          // Poll for task updates
+          let completed = false
+          let lastLogCount = 0
 
-          // Simulate agent work
-          for (const agent of agents) {
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ 
-                type: 'log', 
-                agent, 
-                message: `Working on: ${mission}` 
-              })}\n\n`)
-            )
-            await sleep(1500)
+          while (!completed) {
+            await sleep(1000)
+
+            // Get task status
+            const statusResponse = await fetch(`${BACKEND_URL}/tasks/${taskId}`)
+            const taskData = await statusResponse.json()
+
+            // Stream new logs
+            if (taskData.execution_log && taskData.execution_log.length > lastLogCount) {
+              for (let i = lastLogCount; i < taskData.execution_log.length; i++) {
+                const log = taskData.execution_log[i]
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ 
+                    type: 'log', 
+                    agent: log.agent, 
+                    message: log.message 
+                  })}\n\n`)
+                )
+              }
+              lastLogCount = taskData.execution_log.length
+            }
+
+            // Check if completed
+            if (taskData.status === 'completed' || taskData.status === 'failed') {
+              completed = true
+
+              if (taskData.result) {
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ 
+                    type: 'artifact', 
+                    content: taskData.result 
+                  })}\n\n`)
+                )
+              }
+
+              if (taskData.status === 'completed') {
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ 
+                    type: 'log', 
+                    agent: 'System', 
+                    message: '✅ Mission complete!' 
+                  })}\n\n`)
+                )
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ type: 'complete' })}\n\n`)
+                )
+              } else {
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ 
+                    type: 'error', 
+                    message: taskData.result || 'Task failed' 
+                  })}\n\n`)
+                )
+              }
+            }
           }
-
-          // Generate artifact
-          const artifact = `# Mission Report: ${mission}\n\n## Analysis\n\nThis is a demo response. To enable full AI agent capabilities:\n\n1. Deploy the Python backend separately (Railway, Render, etc.)\n2. Update the API endpoint in this file\n3. Or run the full stack locally\n\n## Summary\n\nMission objective received and processed in demo mode.\n\n**Status:** Demo Mode Active\n**Mission:** ${mission}\n**Timestamp:** ${new Date().toISOString()}`
-
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ 
-              type: 'artifact', 
-              content: artifact 
-            })}\n\n`)
-          )
-
-          await sleep(500)
-
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ 
-              type: 'log', 
-              agent: 'System', 
-              message: '✅ Mission complete (Demo Mode)' 
-            })}\n\n`)
-          )
-
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ type: 'complete' })}\n\n`)
-          )
 
           controller.close()
         } catch (error) {
