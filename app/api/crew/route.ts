@@ -1,6 +1,4 @@
 import { NextRequest } from 'next/server'
-import { spawn } from 'child_process'
-import path from 'path'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,52 +18,57 @@ export async function POST(request: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          // Spawn Python process
-          const pythonScript = path.join(process.cwd(), 'api', 'crew', 'route.py')
-          const python = spawn('python3.11', [pythonScript], {
-            env: { ...process.env },
-          })
+          // Demo mode - simulate agent execution
+          const agents = ['Research Agent', 'Analysis Agent', 'Writer Agent']
+          
+          // Send initial log
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ 
+              type: 'log', 
+              agent: 'System', 
+              message: '🚀 Mission initiated...' 
+            })}\n\n`)
+          )
 
-          // Send mission data to Python
-          python.stdin.write(JSON.stringify({ mission }))
-          python.stdin.end()
+          await sleep(1000)
 
-          // Stream Python output
-          python.stdout.on('data', (data) => {
-            const lines = data.toString().split('\n').filter((line: string) => line.trim())
-            for (const line of lines) {
-              try {
-                const event = JSON.parse(line)
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
-              } catch (e) {
-                // Skip invalid JSON
-              }
-            }
-          })
-
-          python.stderr.on('data', (data) => {
-            console.error('Python error:', data.toString())
-          })
-
-          python.on('close', (code) => {
-            if (code !== 0) {
-              controller.enqueue(
-                encoder.encode(
-                  `data: ${JSON.stringify({ type: 'error', message: 'Python process failed' })}\n\n`
-                )
-              )
-            }
-            controller.close()
-          })
-
-          python.on('error', (error) => {
+          // Simulate agent work
+          for (const agent of agents) {
             controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`
-              )
+              encoder.encode(`data: ${JSON.stringify({ 
+                type: 'log', 
+                agent, 
+                message: `Working on: ${mission}` 
+              })}\n\n`)
             )
-            controller.close()
-          })
+            await sleep(1500)
+          }
+
+          // Generate artifact
+          const artifact = `# Mission Report: ${mission}\n\n## Analysis\n\nThis is a demo response. To enable full AI agent capabilities:\n\n1. Deploy the Python backend separately (Railway, Render, etc.)\n2. Update the API endpoint in this file\n3. Or run the full stack locally\n\n## Summary\n\nMission objective received and processed in demo mode.\n\n**Status:** Demo Mode Active\n**Mission:** ${mission}\n**Timestamp:** ${new Date().toISOString()}`
+
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ 
+              type: 'artifact', 
+              content: artifact 
+            })}\n\n`)
+          )
+
+          await sleep(500)
+
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ 
+              type: 'log', 
+              agent: 'System', 
+              message: '✅ Mission complete (Demo Mode)' 
+            })}\n\n`)
+          )
+
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ type: 'complete' })}\n\n`)
+          )
+
+          controller.close()
         } catch (error) {
           controller.enqueue(
             encoder.encode(
@@ -90,4 +93,8 @@ export async function POST(request: NextRequest) {
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
+}
+
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
