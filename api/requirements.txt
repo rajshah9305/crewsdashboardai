@@ -1,0 +1,2 @@
+# Vercel Python serverless functions dependencies
+# Note: Keep minimal for faster cold starts
