@@ -28,12 +28,12 @@ A production-ready AI agent orchestration platform powered by CrewAI, Groq, and 
 - Supabase account
 - API keys (Groq, Serper, Browserless)
 
-### Installation
+### Local Development
 
 1. Clone the repository:
 ```bash
-git clone <your-repo-url>
-cd nexusagents
+git clone https://github.com/rajshah9305/crewsdashboardai.git
+cd crewsdashboardai
 ```
 
 2. Install dependencies:
@@ -64,16 +64,41 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) to see the app.
 
-## Deployment
+## Deployment to Vercel
 
-### Deploy to Vercel
+### 1. Deploy to Vercel
 
 1. Push your code to GitHub
 2. Import the project in Vercel
-3. Add environment variables in Vercel dashboard
+3. Add environment variables in Vercel dashboard:
+   - `GROQ_API_KEY`
+   - `SERPER_API_KEY`
+   - `BROWSERLESS_API_KEY`
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
 4. Deploy!
 
-The Python API routes will automatically be deployed as serverless functions.
+### 2. Vercel Configuration
+
+The `vercel.json` file is configured for:
+- Next.js framework
+- Python 3.11 runtime for API routes
+- 60-second max duration for CrewAI functions
+- Automatic serverless function deployment
+
+### 3. Environment Variables
+
+Set these in your Vercel dashboard under Project Settings > Environment Variables:
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `GROQ_API_KEY` | Your Groq API key for LLM inference | ✅ |
+| `SERPER_API_KEY` | Your Serper API key for web search | ✅ |
+| `BROWSERLESS_API_KEY` | Your Browserless API key for web scraping | ✅ |
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL | ✅ |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anonymous key | ✅ |
+| `SUPABASE_SERVICE_ROLE_KEY` | Your Supabase service role key | ✅ |
 
 ## Project Structure
 
@@ -85,6 +110,8 @@ nexusagents/
 │   ├── index.py              # Health check API
 │   └── requirements.txt      # Python dependencies
 ├── app/
+│   ├── api/crew/
+│   │   └── route.ts          # Local development API route
 │   ├── layout.tsx            # Root layout
 │   ├── page.tsx              # Main page
 │   └── globals.css           # Global styles
@@ -137,44 +164,20 @@ Server-Sent Events (SSE) stream with the following event types:
 - `complete`: Mission completion
 - `error`: Error messages
 
-## Configuration
-
-### Vercel Configuration
-
-The `vercel.json` file configures:
-- Python 3.11 runtime for API routes
-- 60-second max duration for serverless functions
-- API route rewrites
-
-### CrewAI Agents
-
-The platform includes three specialized agents:
-
-1. **Researcher**: Searches the web using Serper
-2. **Developer**: Analyzes content and documentation
-3. **Manager**: Coordinates the team and synthesizes results
-
 ## Troubleshooting
 
-### Python Dependencies
+### Vercel Deployment Issues
 
-If you encounter issues with Python dependencies:
-```bash
-pip install --upgrade pip
-pip install -r requirements.txt
-```
+1. **Python Dependencies**: Ensure all dependencies in `api/requirements.txt` are compatible with Python 3.11
+2. **Environment Variables**: Verify all required environment variables are set in Vercel dashboard
+3. **Function Timeout**: CrewAI operations may take time; the timeout is set to 60 seconds
+4. **Cold Starts**: First request may be slower due to serverless cold starts
 
-### Vercel Deployment
+### Local Development
 
-- Ensure Python 3.11 is selected in Vercel settings
-- Check that all environment variables are set
-- Review function logs in Vercel dashboard
-
-### Supabase Connection
-
-- Verify your Supabase URL and keys
-- Check that the missions table exists
-- Ensure RLS policies are configured correctly
+- **API Routes**: Local development uses TypeScript API routes with simulated responses
+- **Production**: Vercel deployment uses Python serverless functions with real CrewAI agents
+- **Environment**: Make sure `.env.local` has all required API keys
 
 ## License
 
