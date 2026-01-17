@@ -1,6 +1,6 @@
-crewai==0.55.2
-crewai-tools==0.8.3
-groq==0.9.0
-langchain-groq==0.1.9
-requests==2.31.0
-pydantic==2.7.4
+crewai
+crewai-tools
+groq
+langchain-groq
+requests
+pydantic
