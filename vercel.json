@@ -1,3 +1,17 @@
 {
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "functions": {
+    "api/crew/index.py": {
+      "runtime": "python3.9"
+    },
+    "api/index.py": {
+      "runtime": "python3.9"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/crew",
+      "destination": "/api/crew/index.py"
+    }
+  ]
 }

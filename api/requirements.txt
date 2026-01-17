@@ -1,2 +1,6 @@
-# Vercel Python serverless functions dependencies
-# Note: Keep minimal for faster cold starts
+crewai==0.70.1
+crewai-tools==0.12.1
+groq==0.11.0
+langchain-groq==0.2.6
+requests==2.31.0
+pydantic==2.8.2

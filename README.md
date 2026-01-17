@@ -39,7 +39,6 @@ cd nexusagents
 2. Install dependencies:
 ```bash
 npm install
-pip install -r requirements.txt
 ```
 
 3. Set up environment variables:
@@ -81,8 +80,10 @@ The Python API routes will automatically be deployed as serverless functions.
 ```
 nexusagents/
 ├── api/
-│   └── crew/
-│       └── index.py          # CrewAI backend API
+│   ├── crew/
+│   │   └── index.py          # CrewAI backend API
+│   ├── index.py              # Health check API
+│   └── requirements.txt      # Python dependencies
 ├── app/
 │   ├── layout.tsx            # Root layout
 │   ├── page.tsx              # Main page
@@ -90,12 +91,12 @@ nexusagents/
 ├── components/
 │   ├── MissionControl.tsx    # Mission input component
 │   ├── MatrixTerminal.tsx    # Live logs terminal
+│   ├── HistoryPanel.tsx      # Mission history
 │   └── ArtifactPanel.tsx     # Generated artifact display
 ├── lib/
 │   └── supabase.ts           # Supabase client
 ├── supabase/
 │   └── schema.sql            # Database schema
-├── requirements.txt          # Python dependencies
 ├── package.json              # Node dependencies
 ├── vercel.json               # Vercel configuration
 └── README.md

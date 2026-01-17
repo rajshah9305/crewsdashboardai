@@ -1,7 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 interface ArtifactPanelProps {
   artifact: string
@@ -10,6 +14,14 @@ interface ArtifactPanelProps {
 
 export default function ArtifactPanel({ artifact, isExecuting }: ArtifactPanelProps) {
   const [copied, setCopied] = useState(false)
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to bottom when new content is added
+  useEffect(() => {
+    if (contentRef.current && artifact) {
+      contentRef.current.scrollTop = contentRef.current.scrollHeight
+    }
+  }, [artifact])
 
   const handleCopy = () => {
     navigator.clipboard.writeText(artifact)
@@ -76,7 +88,10 @@ export default function ArtifactPanel({ artifact, isExecuting }: ArtifactPanelPr
       )}
 
       {/* Content Area */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-orange-600/50 scrollbar-track-transparent">
+      <div 
+        ref={contentRef}
+        className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-orange-600/50 scrollbar-track-transparent max-h-[500px]"
+      >
         {!artifact && !isExecuting && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -107,9 +122,110 @@ export default function ArtifactPanel({ artifact, isExecuting }: ArtifactPanelPr
             transition={{ duration: 0.3 }}
             className="text-sm"
           >
-            <pre className="text-black whitespace-pre-wrap leading-relaxed font-mono text-sm bg-gradient-to-br from-orange-50/30 to-white p-8 rounded-xl border-2 border-orange-200 shadow-inner font-semibold selection:bg-orange-200 selection:text-black">
-              {artifact}
-            </pre>
+            <div className="prose prose-sm max-w-none bg-gradient-to-br from-orange-50/30 to-white p-8 rounded-xl border-2 border-orange-200 shadow-inner">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  // Custom styling for markdown elements
+                  h1: ({ children }) => (
+                    <h1 className="text-2xl font-bold text-gray-900 mb-4 pb-2 border-b-2 border-orange-200">
+                      {children}
+                    </h1>
+                  ),
+                  h2: ({ children }) => (
+                    <h2 className="text-xl font-bold text-gray-800 mb-3 mt-6">
+                      {children}
+                    </h2>
+                  ),
+                  h3: ({ children }) => (
+                    <h3 className="text-lg font-semibold text-gray-700 mb-2 mt-4">
+                      {children}
+                    </h3>
+                  ),
+                  p: ({ children }) => (
+                    <p className="text-gray-700 mb-3 leading-relaxed">
+                      {children}
+                    </p>
+                  ),
+                  ul: ({ children }) => (
+                    <ul className="list-disc list-inside mb-4 space-y-1 text-gray-700">
+                      {children}
+                    </ul>
+                  ),
+                  ol: ({ children }) => (
+                    <ol className="list-decimal list-inside mb-4 space-y-1 text-gray-700">
+                      {children}
+                    </ol>
+                  ),
+                  li: ({ children }) => (
+                    <li className="text-gray-700 mb-1">
+                      {children}
+                    </li>
+                  ),
+                  code: ({ inline, className, children, ...props }) => {
+                    const match = /language-(\w+)/.exec(className || '')
+                    const language = match ? match[1] : 'text'
+                    
+                    return !inline ? (
+                      <div className="relative mb-4">
+                        <div className="absolute top-2 right-2 text-xs text-gray-400 font-mono bg-gray-800 px-2 py-1 rounded z-10">
+                          {language}
+                        </div>
+                        <SyntaxHighlighter
+                          style={oneDark}
+                          language={language}
+                          PreTag="div"
+                          className="rounded-lg text-sm"
+                        >
+                          {String(children).replace(/\n$/, '')}
+                        </SyntaxHighlighter>
+                      </div>
+                    ) : (
+                      <code className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm font-mono" {...props}>
+                        {children}
+                      </code>
+                    )
+                  },
+                  blockquote: ({ children }) => (
+                    <blockquote className="border-l-4 border-orange-400 pl-4 italic text-gray-600 mb-4">
+                      {children}
+                    </blockquote>
+                  ),
+                  table: ({ children }) => (
+                    <div className="overflow-x-auto mb-4">
+                      <table className="min-w-full border border-gray-300">
+                        {children}
+                      </table>
+                    </div>
+                  ),
+                  th: ({ children }) => (
+                    <th className="border border-gray-300 px-4 py-2 bg-gray-100 font-semibold text-left">
+                      {children}
+                    </th>
+                  ),
+                  td: ({ children }) => (
+                    <td className="border border-gray-300 px-4 py-2">
+                      {children}
+                    </td>
+                  ),
+                  hr: () => (
+                    <hr className="border-t-2 border-orange-200 my-6" />
+                  ),
+                  strong: ({ children }) => (
+                    <strong className="font-bold text-gray-900">
+                      {children}
+                    </strong>
+                  ),
+                  em: ({ children }) => (
+                    <em className="italic text-gray-700">
+                      {children}
+                    </em>
+                  ),
+                }}
+              >
+                {artifact}
+              </ReactMarkdown>
+            </div>
           </motion.div>
         )}
 
