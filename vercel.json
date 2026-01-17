@@ -1,18 +1,10 @@
 {
-  "framework": "nextjs",
   "functions": {
     "api/crew/index.py": {
-      "runtime": "python3.11",
-      "maxDuration": 60
+      "runtime": "@vercel/python@4.3.0"
     },
     "api/index.py": {
-      "runtime": "python3.11",
-      "maxDuration": 30
-    }
-  },
-  "build": {
-    "env": {
-      "PYTHON_VERSION": "3.11"
+      "runtime": "@vercel/python@4.3.0"
     }
   }
 }
